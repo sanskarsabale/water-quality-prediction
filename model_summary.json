@@ -1,0 +1,146 @@
+{
+    "best_model_name": "Decision Tree",
+    "feature_names": [
+        "ph",
+        "Hardness",
+        "Solids",
+        "Chloramines",
+        "Sulfate",
+        "Conductivity",
+        "Organic_carbon",
+        "Trihalomethanes",
+        "Turbidity"
+    ],
+    "feature_importances": {
+        "ph": 0.11929245868108823,
+        "Hardness": 0.043795771653135536,
+        "Solids": 0.22132389979622125,
+        "Chloramines": 0.1283422837019688,
+        "Sulfate": 0.11277730182762997,
+        "Conductivity": 0.04158492044078447,
+        "Organic_carbon": 0.11717279626297364,
+        "Trihalomethanes": 0.07798678906021847,
+        "Turbidity": 0.13772377857597956
+    },
+    "metrics": {
+        "Logistic Regression": {
+            "Accuracy": 0.6235,
+            "Precision": 0.7479,
+            "Recall": 0.6338,
+            "F1-Score": 0.6861,
+            "ROC-AUC": 0.6695,
+            "Confusion_Matrix": [
+                [
+                    139,
+                    91
+                ],
+                [
+                    156,
+                    270
+                ]
+            ]
+        },
+        "Decision Tree": {
+            "Accuracy": 0.6555,
+            "Precision": 0.7252,
+            "Recall": 0.7559,
+            "F1-Score": 0.7402,
+            "ROC-AUC": 0.6809,
+            "Confusion_Matrix": [
+                [
+                    108,
+                    122
+                ],
+                [
+                    104,
+                    322
+                ]
+            ]
+        },
+        "Random Forest": {
+            "Accuracy": 0.6677,
+            "Precision": 0.7524,
+            "Recall": 0.7277,
+            "F1-Score": 0.7399,
+            "ROC-AUC": 0.7085,
+            "Confusion_Matrix": [
+                [
+                    128,
+                    102
+                ],
+                [
+                    116,
+                    310
+                ]
+            ]
+        },
+        "Gradient Boosting": {
+            "Accuracy": 0.6585,
+            "Precision": 0.7577,
+            "Recall": 0.6972,
+            "F1-Score": 0.7262,
+            "ROC-AUC": 0.7058,
+            "Confusion_Matrix": [
+                [
+                    135,
+                    95
+                ],
+                [
+                    129,
+                    297
+                ]
+            ]
+        },
+        "Support Vector Machine (SVM)": {
+            "Accuracy": 0.6372,
+            "Precision": 0.7474,
+            "Recall": 0.6667,
+            "F1-Score": 0.7047,
+            "ROC-AUC": 0.6801,
+            "Confusion_Matrix": [
+                [
+                    134,
+                    96
+                ],
+                [
+                    142,
+                    284
+                ]
+            ]
+        },
+        "Neural Network (MLP)": {
+            "Accuracy": 0.6296,
+            "Precision": 0.7215,
+            "Recall": 0.6995,
+            "F1-Score": 0.7104,
+            "ROC-AUC": 0.642,
+            "Confusion_Matrix": [
+                [
+                    115,
+                    115
+                ],
+                [
+                    128,
+                    298
+                ]
+            ]
+        },
+        "XGBoost": {
+            "Accuracy": 0.6662,
+            "Precision": 0.7661,
+            "Recall": 0.6995,
+            "F1-Score": 0.7313,
+            "ROC-AUC": 0.7091,
+            "Confusion_Matrix": [
+                [
+                    139,
+                    91
+                ],
+                [
+                    128,
+                    298
+                ]
+            ]
+        }
+    }
+}
