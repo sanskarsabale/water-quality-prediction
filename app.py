@@ -1,4 +1,99 @@
-            checks.append({
+import streamlit as st
+import pandas as pd
+import numpy as np
+import pickle
+import json
+import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+st.set_page_config(
+    page_title="Water Quality Prediction Dashboard",
+    page_icon=None,
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom Bright UI CSS Injection (No Emojis, No Unit 4)
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #FFFFFF;
+        color: #0F172A;
+    }
+    .main-header {
+        font-size: 2.3rem;
+        font-weight: 800;
+        color: #0284C7;
+        letter-spacing: -0.5px;
+        margin-bottom: 0.2rem;
+    }
+    .sub-header {
+        font-size: 1.1rem;
+        color: #475569;
+        font-weight: 500;
+        margin-bottom: 1.8rem;
+    }
+    .safe-box {
+        background-color: #F0FDF4;
+        border: 2px solid #22C55E;
+        color: #15803D;
+        padding: 1.2rem;
+        border-radius: 0.75rem;
+        font-size: 1.25rem;
+        font-weight: 800;
+        text-align: center;
+    }
+    .unsafe-box {
+        background-color: #FEF2F2;
+        border: 2px solid #EF4444;
+        color: #B91C1C;
+        padding: 1.2rem;
+        border-radius: 0.75rem;
+        font-size: 1.25rem;
+        font-weight: 800;
+        text-align: center;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+@st.cache_resource
+def load_artifacts():
+    model_path = os.path.join(BASE_DIR, 'best_model.pkl')
+    scaler_path = os.path.join(BASE_DIR, 'scaler.pkl')
+    imputer_path = os.path.join(BASE_DIR, 'imputer.pkl')
+    json_path = os.path.join(BASE_DIR, 'model_summary.json')
+    data_path = os.path.join(BASE_DIR, 'water_potability.csv')
+
+    with open(model_path, 'rb') as f:
+        model = pickle.load(f)
+    with open(scaler_path, 'rb') as f:
+        scaler = pickle.load(f)
+    with open(imputer_path, 'rb') as f:
+        imputer = pickle.load(f)
+    with open(json_path, 'r') as f:
+        summary = json.load(f)
+
+    df = pd.read_csv(data_path)
+    return model, scaler, imputer, summary, df
+
+model, scaler, imputer, summary, df = load_artifacts()
+
+# Sidebar Navigation
+st.sidebar.markdown("### Water Quality ML System")
+page = st.sidebar.radio("Navigate", [
+    "Live Water Predictor",
+    "Dataset Explorer (EDA)",
+    "Model Benchmarks",
+    "Project Documentation"
+])
+
+st.sidebar.markdown("---")
+st.sidebar.markdown("#### Project Scope")
+st.sidebar.caption("""
+• Domain: ML & Data Analysis            checks.append({
                 'Metric': info['name'],
                 'Sample Input': f"{v:.2f} {info['unit']}",
                 'Project Reference Range': f"{info['min']} - {info['max']} {info['unit']}",
