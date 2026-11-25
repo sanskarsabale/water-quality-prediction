@@ -98,6 +98,7 @@ st.sidebar.caption("""
 • Target: UN Sustainable Development Goal 6
 """)
 
+# Project screening reference ranges (not a complete WHO/ BIS certification standard).
 WHO_LIMITS = {
     'ph': {'min': 6.5, 'max': 8.5, 'unit': 'pH scale', 'name': 'pH Level'},
     'Hardness': {'min': 0, 'max': 250.0, 'unit': 'mg/L', 'name': 'Hardness'},
@@ -137,60 +138,89 @@ if page == "Live Water Predictor":
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        val_ph = st.slider("pH Level", 0.0, 14.0, float(preset_ph), 0.1, help="Safe WHO Range: 6.5 - 8.5")
-        val_hard = st.slider("Hardness (mg/L)", 0.0, 400.0, float(preset_hard), 5.0, help="Safe WHO Range: < 250 mg/L")
-        val_solids = st.slider("Solids / TDS (ppm)", 0.0, 70000.0, float(preset_solids), 500.0, help="Safe WHO Range: < 25,000 ppm")
+        val_ph = st.slider("pH Level", 0.0, 14.0, float(preset_ph), 0.1, help="Project reference range: 6.5 - 8.5")
+        val_hard = st.slider("Hardness (mg/L)", 0.0, 400.0, float(preset_hard), 5.0, help="Project reference range: 0 - 250 mg/L")
+        val_solids = st.slider("Solids / TDS (ppm)", 0.0, 70000.0, float(preset_solids), 500.0, help="Project reference range: 0 - 25,000 ppm")
 
     with col2:
-        val_chlor = st.slider("Chloramines (ppm)", 0.0, 20.0, float(preset_chlor), 0.1, help="Safe WHO Range: < 8.0 ppm")
-        val_sulf = st.slider("Sulfate (mg/L)", 0.0, 600.0, float(preset_sulf), 5.0, help="Safe WHO Range: < 350 mg/L")
-        val_cond = st.slider("Conductivity (μS/cm)", 0.0, 900.0, float(preset_cond), 10.0, help="Safe WHO Range: < 500 μS/cm")
+        val_chlor = st.slider("Chloramines (ppm)", 0.0, 20.0, float(preset_chlor), 0.1, help="Project reference range: 0 - 8.0 ppm")
+        val_sulf = st.slider("Sulfate (mg/L)", 0.0, 600.0, float(preset_sulf), 5.0, help="Project reference range: 0 - 350 mg/L")
+        val_cond = st.slider("Conductivity (μS/cm)", 0.0, 900.0, float(preset_cond), 10.0, help="Project reference range: 0 - 500 μS/cm")
 
     with col3:
-        val_oc = st.slider("Organic Carbon (ppm)", 0.0, 35.0, float(preset_oc), 0.5, help="Safe WHO Range: < 15.0 ppm")
-        val_thm = st.slider("Trihalomethanes (μg/L)", 0.0, 150.0, float(preset_thm), 1.0, help="Safe WHO Range: < 80 μg/L")
-        val_turb = st.slider("Turbidity (NTU)", 0.0, 10.0, float(preset_turb), 0.1, help="Safe WHO Range: < 4.5 NTU")
+        val_oc = st.slider("Organic Carbon (ppm)", 0.0, 35.0, float(preset_oc), 0.5, help="Project reference range: 0 - 15.0 ppm")
+        val_thm = st.slider("Trihalomethanes (μg/L)", 0.0, 150.0, float(preset_thm), 1.0, help="Project reference range: 0 - 80 μg/L")
+        val_turb = st.slider("Turbidity (NTU)", 0.0, 10.0, float(preset_turb), 0.1, help="Project reference range: 0 - 4.5 NTU")
 
     input_data = np.array([[val_ph, val_hard, val_solids, val_chlor, val_sulf, val_cond, val_oc, val_thm, val_turb]])
 
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("Run Machine Learning Diagnosis", type="primary"):
+        # Keep the model prediction separate from the parameter-range screening.
         input_scaled = scaler.transform(input_data)
         pred = model.predict(input_scaled)[0]
-        prob = model.predict_proba(input_scaled)[0] if hasattr(model, 'predict_proba') else [0.5, 0.5]
+        prob = model.predict_proba(input_scaled)[0] if hasattr(model, 'predict_proba') else None
+
+        # Map probabilities using the model's actual class labels rather than
+        # assuming that probability index 1 always means potable.
+        model_classes = list(getattr(model, 'classes_', [0, 1]))
+        potable_probability = None
+        non_potable_probability = None
+        if prob is not None:
+            for class_label, class_probability in zip(model_classes, prob):
+                if class_label == 1:
+                    potable_probability = float(class_probability)
+                elif class_label == 0:
+                    non_potable_probability = float(class_probability)
 
         st.markdown("### Prediction Diagnosis Result")
         c_res1, c_res2 = st.columns([1, 1.5])
 
+        user_vals = {
+            'ph': val_ph, 'Hardness': val_hard, 'Solids': val_solids,
+            'Chloramines': val_chlor, 'Sulfate': val_sulf, 'Conductivity': val_cond,
+            'Organic_carbon': val_oc, 'Trihalomethanes': val_thm, 'Turbidity': val_turb
+        }
+
+        checks = []
+        out_of_range = []
+        for k, info in WHO_LIMITS.items():
+            v = user_vals[k]
+            is_within_range = (v >= info['min']) and (v <= info['max'])
+            status = "WITHIN RANGE" if is_within_range else "OUTSIDE RANGE"
+            if not is_within_range:
+                out_of_range.append(info['name'])
+            checks.append({
+                'Metric': info['name'],
+                'Sample Input': f"{v:.2f} {info['unit']}",
+                'Project Reference Range': f"{info['min']} - {info['max']} {info['unit']}",
+                'Status': status
+            })
+
         with c_res1:
             if pred == 1:
-                st.markdown('<div class="safe-box">WATER IS POTABLE<br><span style="font-size:0.9rem; font-weight:normal;">Safe for Human Consumption</span></div>', unsafe_allow_html=True)
-                st.markdown(f"**Safety Confidence:** `{prob[1]*100:.1f}%`")
-                st.progress(float(prob[1]))
+                st.markdown('<div class="safe-box">ML MODEL PREDICTION: POTABLE</div>', unsafe_allow_html=True)
+                if potable_probability is not None:
+                    st.markdown(f"**Model Prediction Confidence:** `{potable_probability * 100:.1f}%`")
+                    st.progress(potable_probability)
             else:
-                st.markdown('<div class="unsafe-box">WATER IS NON-POTABLE<br><span style="font-size:0.9rem; font-weight:normal;">Unsafe / Requires Chemical Treatment</span></div>', unsafe_allow_html=True)
-                st.markdown(f"**Contamination Risk Score:** `{prob[0]*100:.1f}%`")
-                st.progress(float(prob[0]))
+                st.markdown('<div class="unsafe-box">ML MODEL PREDICTION: NON-POTABLE</div>', unsafe_allow_html=True)
+                if non_potable_probability is not None:
+                    st.markdown(f"**Model Prediction Confidence:** `{non_potable_probability * 100:.1f}%`")
+                    st.progress(non_potable_probability)
+
+            if out_of_range:
+                st.error("SCREENING WARNING: One or more parameters are outside the configured reference ranges. Do not treat this sample as safe to drink. Further laboratory testing is required.")
+                st.markdown("**Parameters outside range:** " + ", ".join(out_of_range))
+            elif pred == 0:
+                st.warning("The ML model predicts non-potable water. Further testing and appropriate treatment may be required.")
+            else:
+                st.info("The ML model predicts potable water and all entered parameters are within the configured reference ranges. This is only an educational screening result, not a certification of drinking-water safety. Laboratory testing is still required.")
 
         with c_res2:
-            st.markdown("##### WHO Parameter Safety Standards Check:")
-            checks = []
-            user_vals = {
-                'ph': val_ph, 'Hardness': val_hard, 'Solids': val_solids,
-                'Chloramines': val_chlor, 'Sulfate': val_sulf, 'Conductivity': val_cond,
-                'Organic_carbon': val_oc, 'Trihalomethanes': val_thm, 'Turbidity': val_turb
-            }
-            for k, info in WHO_LIMITS.items():
-                v = user_vals[k]
-                is_safe = (v >= info['min']) and (v <= info['max'])
-                status = "PASS" if is_safe else "EXCEEDS LIMIT"
-                checks.append({
-                    'Metric': info['name'],
-                    'Sample Input': f"{v:.2f} {info['unit']}",
-                    'WHO Limit': f"{info['min']} - {info['max']} {info['unit']}",
-                    'Status': status
-                })
-            st.dataframe(pd.DataFrame(checks))
+            st.markdown("##### Parameter Reference-Range Screening:")
+            st.caption("These are the reference ranges configured in this project. They are screening checks, not a complete official drinking-water certification standard.")
+            st.dataframe(pd.DataFrame(checks), use_container_width=True, hide_index=True)
 
 # ==========================================
 # PAGE 2: DATASET EXPLORER
