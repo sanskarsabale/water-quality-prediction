@@ -1,195 +1,3 @@
-import streamlit as st
-import pandas as pd
-import numpy as np
-import pickle
-import json
-import os
-import matplotlib.pyplot as plt
-import seaborn as sns
-
-st.set_page_config(
-    page_title="Water Quality Prediction Dashboard",
-    page_icon=None,
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# Custom Bright UI CSS Injection (No Emojis, No Unit 4)
-st.markdown("""
-    <style>
-    .stApp {
-        background-color: #FFFFFF;
-        color: #0F172A;
-    }
-    .main-header {
-        font-size: 2.3rem;
-        font-weight: 800;
-        color: #0284C7;
-        letter-spacing: -0.5px;
-        margin-bottom: 0.2rem;
-    }
-    .sub-header {
-        font-size: 1.1rem;
-        color: #475569;
-        font-weight: 500;
-        margin-bottom: 1.8rem;
-    }
-    .safe-box {
-        background-color: #F0FDF4;
-        border: 2px solid #22C55E;
-        color: #15803D;
-        padding: 1.2rem;
-        border-radius: 0.75rem;
-        font-size: 1.25rem;
-        font-weight: 800;
-        text-align: center;
-    }
-    .unsafe-box {
-        background-color: #FEF2F2;
-        border: 2px solid #EF4444;
-        color: #B91C1C;
-        padding: 1.2rem;
-        border-radius: 0.75rem;
-        font-size: 1.25rem;
-        font-weight: 800;
-        text-align: center;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-@st.cache_resource
-def load_artifacts():
-    model_path = os.path.join(BASE_DIR, 'best_model.pkl')
-    scaler_path = os.path.join(BASE_DIR, 'scaler.pkl')
-    imputer_path = os.path.join(BASE_DIR, 'imputer.pkl')
-    json_path = os.path.join(BASE_DIR, 'model_summary.json')
-    data_path = os.path.join(BASE_DIR, 'water_potability.csv')
-
-    with open(model_path, 'rb') as f:
-        model = pickle.load(f)
-    with open(scaler_path, 'rb') as f:
-        scaler = pickle.load(f)
-    with open(imputer_path, 'rb') as f:
-        imputer = pickle.load(f)
-    with open(json_path, 'r') as f:
-        summary = json.load(f)
-
-    df = pd.read_csv(data_path)
-    return model, scaler, imputer, summary, df
-
-model, scaler, imputer, summary, df = load_artifacts()
-
-# Sidebar Navigation
-st.sidebar.markdown("### Water Quality ML System")
-page = st.sidebar.radio("Navigate", [
-    "Live Water Predictor",
-    "Dataset Explorer (EDA)",
-    "Model Benchmarks",
-    "Project Documentation"
-])
-
-st.sidebar.markdown("---")
-st.sidebar.markdown("#### Project Scope")
-st.sidebar.caption("""
-• Domain: ML & Data Analysis
-• Focus: Water Potability Classification
-• Target: UN Sustainable Development Goal 6
-""")
-
-# Project screening reference ranges (not a complete WHO/ BIS certification standard).
-WHO_LIMITS = {
-    'ph': {'min': 6.5, 'max': 8.5, 'unit': 'pH scale', 'name': 'pH Level'},
-    'Hardness': {'min': 0, 'max': 250.0, 'unit': 'mg/L', 'name': 'Hardness'},
-    'Solids': {'min': 0, 'max': 25000.0, 'unit': 'ppm', 'name': 'Total Dissolved Solids (TDS)'},
-    'Chloramines': {'min': 0, 'max': 8.0, 'unit': 'ppm', 'name': 'Chloramines'},
-    'Sulfate': {'min': 0, 'max': 350.0, 'unit': 'mg/L', 'name': 'Sulfate'},
-    'Conductivity': {'min': 0, 'max': 500.0, 'unit': 'μS/cm', 'name': 'Conductivity'},
-    'Organic_carbon': {'min': 0, 'max': 15.0, 'unit': 'ppm', 'name': 'Organic Carbon'},
-    'Trihalomethanes': {'min': 0, 'max': 80.0, 'unit': 'μg/L', 'name': 'Trihalomethanes'},
-    'Turbidity': {'min': 0, 'max': 4.5, 'unit': 'NTU', 'name': 'Turbidity'}
-}
-
-# ==========================================
-# PAGE 1: LIVE PREDICTOR
-# ==========================================
-if page == "Live Water Predictor":
-    st.markdown('<div class="main-header">Water Quality Prediction Engine</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Input physical & chemical sample parameters to test water potability instantly</div>', unsafe_allow_html=True)
-
-    st.markdown("##### Quick Preset Water Samples:")
-    col_p1, col_p2, col_p3 = st.columns(3)
-
-    preset_ph, preset_hard, preset_solids, preset_chlor, preset_sulf, preset_cond, preset_oc, preset_thm, preset_turb = 7.2, 185.0, 14000.0, 6.5, 310.0, 410.0, 12.0, 60.0, 3.2
-
-    if col_p1.button("Clean Drinking Tap Water"):
-        preset_ph, preset_hard, preset_solids, preset_chlor, preset_sulf, preset_cond, preset_oc, preset_thm, preset_turb = 7.4, 160.0, 12000.0, 5.0, 240.0, 380.0, 9.5, 45.0, 2.8
-
-    if col_p2.button("Toxic Industrial Runoff"):
-        preset_ph, preset_hard, preset_solids, preset_chlor, preset_sulf, preset_cond, preset_oc, preset_thm, preset_turb = 4.8, 310.0, 48000.0, 11.2, 450.0, 680.0, 22.5, 110.0, 6.2
-
-    if col_p3.button("Natural Spring Mineral Water"):
-        preset_ph, preset_hard, preset_solids, preset_chlor, preset_sulf, preset_cond, preset_oc, preset_thm, preset_turb = 8.1, 230.0, 24000.0, 7.1, 340.0, 490.0, 14.1, 72.0, 4.1
-
-    st.markdown("---")
-    st.markdown("#### Chemical Parameter Controls")
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-        val_ph = st.slider("pH Level", 0.0, 14.0, float(preset_ph), 0.1, help="Project reference range: 6.5 - 8.5")
-        val_hard = st.slider("Hardness (mg/L)", 0.0, 400.0, float(preset_hard), 5.0, help="Project reference range: 0 - 250 mg/L")
-        val_solids = st.slider("Solids / TDS (ppm)", 0.0, 70000.0, float(preset_solids), 500.0, help="Project reference range: 0 - 25,000 ppm")
-
-    with col2:
-        val_chlor = st.slider("Chloramines (ppm)", 0.0, 20.0, float(preset_chlor), 0.1, help="Project reference range: 0 - 8.0 ppm")
-        val_sulf = st.slider("Sulfate (mg/L)", 0.0, 600.0, float(preset_sulf), 5.0, help="Project reference range: 0 - 350 mg/L")
-        val_cond = st.slider("Conductivity (μS/cm)", 0.0, 900.0, float(preset_cond), 10.0, help="Project reference range: 0 - 500 μS/cm")
-
-    with col3:
-        val_oc = st.slider("Organic Carbon (ppm)", 0.0, 35.0, float(preset_oc), 0.5, help="Project reference range: 0 - 15.0 ppm")
-        val_thm = st.slider("Trihalomethanes (μg/L)", 0.0, 150.0, float(preset_thm), 1.0, help="Project reference range: 0 - 80 μg/L")
-        val_turb = st.slider("Turbidity (NTU)", 0.0, 10.0, float(preset_turb), 0.1, help="Project reference range: 0 - 4.5 NTU")
-
-    input_data = np.array([[val_ph, val_hard, val_solids, val_chlor, val_sulf, val_cond, val_oc, val_thm, val_turb]])
-
-    st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("Run Machine Learning Diagnosis", type="primary"):
-        # Keep the model prediction separate from the parameter-range screening.
-        input_scaled = scaler.transform(input_data)
-        pred = model.predict(input_scaled)[0]
-        prob = model.predict_proba(input_scaled)[0] if hasattr(model, 'predict_proba') else None
-
-        # Map probabilities using the model's actual class labels rather than
-        # assuming that probability index 1 always means potable.
-        model_classes = list(getattr(model, 'classes_', [0, 1]))
-        potable_probability = None
-        non_potable_probability = None
-        if prob is not None:
-            for class_label, class_probability in zip(model_classes, prob):
-                if class_label == 1:
-                    potable_probability = float(class_probability)
-                elif class_label == 0:
-                    non_potable_probability = float(class_probability)
-
-        st.markdown("### Prediction Diagnosis Result")
-        c_res1, c_res2 = st.columns([1, 1.5])
-
-        user_vals = {
-            'ph': val_ph, 'Hardness': val_hard, 'Solids': val_solids,
-            'Chloramines': val_chlor, 'Sulfate': val_sulf, 'Conductivity': val_cond,
-            'Organic_carbon': val_oc, 'Trihalomethanes': val_thm, 'Turbidity': val_turb
-        }
-
-        checks = []
-        out_of_range = []
-        for k, info in WHO_LIMITS.items():
-            v = user_vals[k]
-            is_within_range = (v >= info['min']) and (v <= info['max'])
-            status = "WITHIN RANGE" if is_within_range else "OUTSIDE RANGE"
-            if not is_within_range:
-                out_of_range.append(info['name'])
             checks.append({
                 'Metric': info['name'],
                 'Sample Input': f"{v:.2f} {info['unit']}",
@@ -198,24 +6,27 @@ if page == "Live Water Predictor":
             })
 
         with c_res1:
+            # Show the overall screening outcome first. The ML classification
+            # remains visible separately and is never presented as a safety certificate.
+            if out_of_range:
+                st.markdown('<div class="unsafe-box">NOT CLEARED FOR DRINKING<br><span style="font-size:0.9rem; font-weight:normal;">Further laboratory testing required</span></div>', unsafe_allow_html=True)
+                st.error("One or more parameters are outside this project's configured reference ranges. Do not treat this sample as safe to drink.")
+                st.markdown("**Parameters outside range:** " + ", ".join(out_of_range))
+            else:
+                st.markdown('<div class="safe-box">NO OUT-OF-RANGE PARAMETERS DETECTED<br><span style="font-size:0.9rem; font-weight:normal;">This is not a drinking-water safety certification</span></div>', unsafe_allow_html=True)
+                st.info("All entered parameters are within this project's configured reference ranges. Laboratory testing is still required to establish drinking-water safety.")
+
+            st.markdown("#### Separate ML model result")
             if pred == 1:
-                st.markdown('<div class="safe-box">ML MODEL PREDICTION: POTABLE</div>', unsafe_allow_html=True)
+                st.success("ML model prediction: POTABLE")
                 if potable_probability is not None:
-                    st.markdown(f"**Model Prediction Confidence:** `{potable_probability * 100:.1f}%`")
+                    st.markdown(f"**Model prediction confidence:** `{potable_probability * 100:.1f}%`")
                     st.progress(potable_probability)
             else:
-                st.markdown('<div class="unsafe-box">ML MODEL PREDICTION: NON-POTABLE</div>', unsafe_allow_html=True)
+                st.warning("ML model prediction: NON-POTABLE")
                 if non_potable_probability is not None:
-                    st.markdown(f"**Model Prediction Confidence:** `{non_potable_probability * 100:.1f}%`")
+                    st.markdown(f"**Model prediction confidence:** `{non_potable_probability * 100:.1f}%`")
                     st.progress(non_potable_probability)
-
-            if out_of_range:
-                st.error("SCREENING WARNING: One or more parameters are outside the configured reference ranges. Do not treat this sample as safe to drink. Further laboratory testing is required.")
-                st.markdown("**Parameters outside range:** " + ", ".join(out_of_range))
-            elif pred == 0:
-                st.warning("The ML model predicts non-potable water. Further testing and appropriate treatment may be required.")
-            else:
-                st.info("The ML model predicts potable water and all entered parameters are within the configured reference ranges. This is only an educational screening result, not a certification of drinking-water safety. Laboratory testing is still required.")
 
         with c_res2:
             st.markdown("##### Parameter Reference-Range Screening:")
